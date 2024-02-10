@@ -61,7 +61,7 @@ Trigger *sqlite3TriggerList(Parse *pParse, Table *pTab){
     if( pTrig->pTabSchema==pTab->pSchema
      && pTrig->table
      && 0==sqlite3StrICmp(pTrig->table, pTab->zName)
-     && pTrig->pTabSchema!=pTmpSchema
+     && (pTrig->pTabSchema!=pTmpSchema || pTrig->bReturning)
     ){
       pTrig->pNext = pList;
       pList = pTrig;
@@ -183,6 +183,10 @@ void sqlite3BeginTrigger(
     sqlite3ErrorMsg(pParse, "cannot create triggers on virtual tables");
     goto trigger_orphan_error;
   }
+  if( (pTab->tabFlags & TF_Shadow)!=0 && sqlite3ReadOnlyShadowTables(db) ){
+    sqlite3ErrorMsg(pParse, "cannot create triggers on shadow tables");
+    goto trigger_orphan_error;
+  }
 
   /* Check that the trigger name is not reserved and that no trigger of the
   ** specified name exists */
@@ -202,6 +206,7 @@ void sqlite3BeginTrigger(
       }else{
         assert( !db->init.busy );
         sqlite3CodeVerifySchema(pParse, iDb);
+        VVA_ONLY( pParse->ifNotExists = 1; )
       }
       goto trigger_cleanup;
     }
@@ -965,10 +970,17 @@ static void codeReturningTrigger(
   SrcList sFrom;
 
   assert( v!=0 );
-  assert( pParse->bReturning );
+  if( !pParse->bReturning ){
+    /* This RETURNING trigger must be for a different statement as
+    ** this statement lacks a RETURNING clause. */
+    return;
+  }
   assert( db->pParse==pParse );
   pReturning = pParse->u1.pReturning;
-  assert( pTrigger == &(pReturning->retTrig) );
+  if( pTrigger != &(pReturning->retTrig) ){
+    /* This RETURNING trigger is for a different statement */
+    return;
+  }
   memset(&sSelect, 0, sizeof(sSelect));
   memset(&sFrom, 0, sizeof(sFrom));
   sSelect.pEList = sqlite3ExprListDup(db, pReturning->pReturnEL, 0);
@@ -983,7 +995,7 @@ static void codeReturningTrigger(
   }
   sqlite3ExprListDelete(db, sSelect.pEList);
   pNew = sqlite3ExpandReturning(pParse, pReturning->pReturnEL, pTab);
-  if( !db->mallocFailed ){
+  if( pParse->nErr==0 ){
     NameContext sNC;
     memset(&sNC, 0, sizeof(sNC));
     if( pReturning->nRetCol==0 ){
@@ -1191,7 +1203,7 @@ static TriggerPrg *codeRowTrigger(
   sSubParse.zAuthContext = pTrigger->zName;
   sSubParse.eTriggerOp = pTrigger->op;
   sSubParse.nQueryLoop = pParse->nQueryLoop;
-  sSubParse.disableVtab = pParse->disableVtab;
+  sSubParse.prepFlags = pParse->prepFlags;
 
   v = sqlite3GetVdbe(&sSubParse);
   if( v ){
@@ -1452,6 +1464,9 @@ u32 sqlite3TriggerColmask(
   Trigger *p;
 
   assert( isNew==1 || isNew==0 );
+  if( IsView(pTab) ){
+    return 0xffffffff;
+  }
   for(p=pTrigger; p; p=p->pNext){
     if( p->op==op
      && (tr_tm&p->tr_tm)

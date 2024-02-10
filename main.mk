@@ -68,7 +68,7 @@ LIBOBJ+= vdbe.o parse.o \
          main.o malloc.o mem0.o mem1.o mem2.o mem3.o mem5.o \
          memdb.o memjournal.o \
          mutex.o mutex_noop.o mutex_unix.o mutex_w32.o \
-         notify.o opcodes.o os.o os_unix.o os_win.o \
+         notify.o opcodes.o os.o os_kv.o os_unix.o os_win.o \
          pager.o pcache.o pcache1.o pragma.o prepare.o printf.o \
          random.o resolve.o rowset.o rtree.o \
          select.o sqlite3rbu.o status.o stmt.o \
@@ -134,6 +134,7 @@ SRC = \
   $(TOP)/src/os.h \
   $(TOP)/src/os_common.h \
   $(TOP)/src/os_setup.h \
+  $(TOP)/src/os_kv.c \
   $(TOP)/src/os_unix.c \
   $(TOP)/src/os_win.c \
   $(TOP)/src/os_win.h \
@@ -191,24 +192,6 @@ SRC = \
 
 # Source code for extensions
 #
-SRC += \
-  $(TOP)/ext/fts1/fts1.c \
-  $(TOP)/ext/fts1/fts1.h \
-  $(TOP)/ext/fts1/fts1_hash.c \
-  $(TOP)/ext/fts1/fts1_hash.h \
-  $(TOP)/ext/fts1/fts1_porter.c \
-  $(TOP)/ext/fts1/fts1_tokenizer.h \
-  $(TOP)/ext/fts1/fts1_tokenizer1.c
-SRC += \
-  $(TOP)/ext/fts2/fts2.c \
-  $(TOP)/ext/fts2/fts2.h \
-  $(TOP)/ext/fts2/fts2_hash.c \
-  $(TOP)/ext/fts2/fts2_hash.h \
-  $(TOP)/ext/fts2/fts2_icu.c \
-  $(TOP)/ext/fts2/fts2_porter.c \
-  $(TOP)/ext/fts2/fts2_tokenizer.h \
-  $(TOP)/ext/fts2/fts2_tokenizer.c \
-  $(TOP)/ext/fts2/fts2_tokenizer1.c
 SRC += \
   $(TOP)/ext/fts3/fts3.c \
   $(TOP)/ext/fts3/fts3.h \
@@ -315,7 +298,6 @@ TESTSRC = \
   $(TOP)/src/test4.c \
   $(TOP)/src/test5.c \
   $(TOP)/src/test6.c \
-  $(TOP)/src/test7.c \
   $(TOP)/src/test8.c \
   $(TOP)/src/test9.c \
   $(TOP)/src/test_autoext.c \
@@ -344,7 +326,6 @@ TESTSRC = \
   $(TOP)/src/test_quota.c \
   $(TOP)/src/test_rtree.c \
   $(TOP)/src/test_schema.c \
-  $(TOP)/src/test_server.c \
   $(TOP)/src/test_sqllog.c \
   $(TOP)/src/test_superlock.c \
   $(TOP)/src/test_syscall.c \
@@ -362,6 +343,7 @@ TESTSRC = \
 TESTSRC += \
   $(TOP)/ext/misc/amatch.c \
   $(TOP)/ext/misc/appendvfs.c \
+  $(TOP)/ext/misc/basexx.c \
   $(TOP)/ext/misc/carray.c \
   $(TOP)/ext/misc/cksumvfs.c \
   $(TOP)/ext/misc/closure.c \
@@ -389,10 +371,12 @@ TESTSRC += \
   $(TOP)/ext/fts5/fts5_tcl.c \
   $(TOP)/ext/fts5/fts5_test_mi.c \
   $(TOP)/ext/fts5/fts5_test_tok.c \
-  $(TOP)/ext/rtree/test_rtreedoc.c
+  $(TOP)/ext/rtree/test_rtreedoc.c \
+  $(TOP)/ext/recover/sqlite3recover.c \
+  $(TOP)/ext/recover/dbdata.c \
+  $(TOP)/ext/recover/test_recover.c
 
 
-#TESTSRC += $(TOP)/ext/fts2/fts2_tokenizer.c
 #TESTSRC += $(TOP)/ext/fts3/fts3_tokenizer.c
 
 TESTSRC2 = \
@@ -411,6 +395,7 @@ TESTSRC2 = \
   $(TOP)/src/main.c \
   $(TOP)/src/mem5.c \
   $(TOP)/src/os.c \
+  $(TOP)/src/os_kv.c \
   $(TOP)/src/os_unix.c \
   $(TOP)/src/os_win.c \
   $(TOP)/src/pager.c \
@@ -477,14 +462,6 @@ HDR = \
 # Header files used by extensions
 #
 EXTHDR += \
-  $(TOP)/ext/fts1/fts1.h \
-  $(TOP)/ext/fts1/fts1_hash.h \
-  $(TOP)/ext/fts1/fts1_tokenizer.h
-EXTHDR += \
-  $(TOP)/ext/fts2/fts2.h \
-  $(TOP)/ext/fts2/fts2_hash.h \
-  $(TOP)/ext/fts2/fts2_tokenizer.h
-EXTHDR += \
   $(TOP)/ext/fts3/fts3.h \
   $(TOP)/ext/fts3/fts3Int.h \
   $(TOP)/ext/fts3/fts3_hash.h \
@@ -539,7 +516,9 @@ SHELL_OPT += -DSQLITE_ENABLE_DBPAGE_VTAB
 SHELL_OPT += -DSQLITE_ENABLE_DBSTAT_VTAB
 SHELL_OPT += -DSQLITE_ENABLE_BYTECODE_VTAB
 SHELL_OPT += -DSQLITE_ENABLE_OFFSET_SQL_FUNC
-FUZZCHECK_OPT = -DSQLITE_ENABLE_MEMSYS5
+FUZZCHECK_OPT += -I$(TOP)/test
+FUZZCHECK_OPT += -I$(TOP)/ext/recover
+FUZZCHECK_OPT += -DSQLITE_ENABLE_MEMSYS5
 FUZZCHECK_OPT += -DSQLITE_MAX_MEMORY=50000000
 FUZZCHECK_OPT += -DSQLITE_PRINTF_PRECISION_LIMIT=1000
 FUZZCHECK_OPT += -DSQLITE_ENABLE_FTS4
@@ -549,7 +528,10 @@ FUZZCHECK_OPT += -DSQLITE_ENABLE_DBSTAT_VTAB
 FUZZCHECK_OPT += -DSQLITE_ENABLE_BYTECODE_VTAB
 FUZZSRC += $(TOP)/test/fuzzcheck.c
 FUZZSRC += $(TOP)/test/ossfuzz.c
+FUZZSRC += $(TOP)/test/vt02.c
 FUZZSRC += $(TOP)/test/fuzzinvariants.c
+FUZZSRC += $(TOP)/ext/recover/dbdata.c
+FUZZSRC += $(TOP)/ext/recover/sqlite3recover.c
 DBFUZZ_OPT =
 KV_OPT = -DSQLITE_THREADSAFE=0 -DSQLITE_DIRECT_OVERFLOW_READ
 ST_OPT = -DSQLITE_THREADSAFE=0
@@ -584,6 +566,12 @@ srcck1$(EXE):	$(TOP)/tool/srcck1.c
 sourcetest:	srcck1$(EXE) sqlite3.c
 	./srcck1 sqlite3.c
 
+src-verify:	$(TOP)/tool/src-verify.c
+	$(BCC) -o src-verify$(EXE) $(TOP)/tool/src-verify.c
+
+verify-source:	./src-verify
+	./src-verify $(TOP)
+
 fuzzershell$(EXE):	$(TOP)/tool/fuzzershell.c sqlite3.c sqlite3.h
 	$(TCCX) -o fuzzershell$(EXE) -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION \
 	  $(FUZZERSHELL_OPT) $(TOP)/tool/fuzzershell.c sqlite3.c \
@@ -608,8 +596,18 @@ dbfuzz2$(EXE):	$(TOP)/test/dbfuzz2.c sqlite3.c sqlite3.h
 	$(TCCX) -I. -g -O0 -DSTANDALONE -o dbfuzz2$(EXE) \
 	  $(DBFUZZ2_OPTS) $(TOP)/test/dbfuzz2.c sqlite3.c  $(TLIBS) $(THREADLIB)
 
-fuzzcheck$(EXE):	$(FUZZSRC) sqlite3.c sqlite3.h
-	$(TCCX) -o fuzzcheck$(EXE) -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION \
+fuzzcheck$(EXE):	$(FUZZSRC) sqlite3.c sqlite3.h $(FUZZDEP)
+	$(TCCX) -o $@ -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION \
+		-DSQLITE_ENABLE_MEMSYS5 $(FUZZCHECK_OPT) -DSQLITE_OSS_FUZZ \
+		$(FUZZSRC) sqlite3.c $(TLIBS) $(THREADLIB)
+
+fuzzcheck-asan$(EXE):	$(FUZZSRC) sqlite3.c sqlite3.h $(FUZZDEP)
+	$(TCCX) -fsanitize=address -o $W -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION \
+		-DSQLITE_ENABLE_MEMSYS5 $(FUZZCHECK_OPT) -DSQLITE_OSS_FUZZ \
+		$(FUZZSRC) sqlite3.c $(TLIBS) $(THREADLIB)
+
+fuzzcheck-ubsan$(EXE):	$(FUZZSRC) sqlite3.c sqlite3.h $(FUZZDEP)
+	$(TCCX) -fsanitize=undefined -o $@ -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION \
 		-DSQLITE_ENABLE_MEMSYS5 $(FUZZCHECK_OPT) -DSQLITE_OSS_FUZZ \
 		$(FUZZSRC) sqlite3.c $(TLIBS) $(THREADLIB)
 
@@ -656,7 +654,7 @@ target_source:	$(SRC) $(TOP)/tool/vdbe-compress.tcl fts5.c
 	cp fts5.c fts5.h tsrc
 	touch target_source
 
-sqlite3.c:	target_source $(TOP)/tool/mksqlite3c.tcl
+sqlite3.c:	target_source $(TOP)/tool/mksqlite3c.tcl src-verify
 	tclsh $(TOP)/tool/mksqlite3c.tcl
 	cp tsrc/sqlite3ext.h .
 	cp $(TOP)/ext/session/sqlite3session.h .
@@ -668,7 +666,7 @@ sqlite3.c:	target_source $(TOP)/tool/mksqlite3c.tcl
 sqlite3ext.h:	target_source
 	cp tsrc/sqlite3ext.h .
 
-sqlite3.c-debug:	target_source $(TOP)/tool/mksqlite3c.tcl
+sqlite3.c-debug:	target_source $(TOP)/tool/mksqlite3c.tcl src-verify
 	tclsh $(TOP)/tool/mksqlite3c.tcl --linemacros=1
 	echo '#ifndef USE_SYSTEM_SQLITE' >tclsqlite3.c
 	cat sqlite3.c >>tclsqlite3.c
@@ -678,9 +676,6 @@ sqlite3.c-debug:	target_source $(TOP)/tool/mksqlite3c.tcl
 
 sqlite3-all.c:	sqlite3.c $(TOP)/tool/split-sqlite3c.tcl
 	tclsh $(TOP)/tool/split-sqlite3c.tcl
-
-fts2amal.c:	target_source $(TOP)/ext/fts2/mkfts2amal.tcl
-	tclsh $(TOP)/ext/fts2/mkfts2amal.tcl
 
 # Rules to build the LEMON compiler generator
 #
@@ -747,6 +742,8 @@ SHELL_SRC = \
 	$(TOP)/src/shell.c.in \
         $(TOP)/ext/misc/appendvfs.c \
 	$(TOP)/ext/misc/completion.c \
+        $(TOP)/ext/misc/base64.c \
+        $(TOP)/ext/misc/base85.c \
         $(TOP)/ext/misc/decimal.c \
 	$(TOP)/ext/misc/fileio.c \
         $(TOP)/ext/misc/ieee754.c \
@@ -759,7 +756,10 @@ SHELL_SRC = \
 	$(TOP)/ext/expert/sqlite3expert.h \
 	$(TOP)/ext/misc/zipfile.c \
 	$(TOP)/ext/misc/memtrace.c \
-	$(TOP)/ext/misc/dbdata.c \
+	$(TOP)/ext/misc/pcachetrace.c \
+	$(TOP)/ext/recover/dbdata.c \
+	$(TOP)/ext/recover/sqlite3recover.c \
+	$(TOP)/ext/recover/sqlite3recover.h \
         $(TOP)/src/test_windirent.c
 
 shell.c:	$(SHELL_SRC) $(TOP)/tool/mkshellc.tcl
@@ -771,24 +771,6 @@ shell.c:	$(SHELL_SRC) $(TOP)/tool/mkshellc.tcl
 #
 icu.o:	$(TOP)/ext/icu/icu.c $(HDR) $(EXTHDR)
 	$(TCCX) -DSQLITE_CORE -c $(TOP)/ext/icu/icu.c
-
-fts2.o:	$(TOP)/ext/fts2/fts2.c $(HDR) $(EXTHDR)
-	$(TCCX) -DSQLITE_CORE -c $(TOP)/ext/fts2/fts2.c
-
-fts2_hash.o:	$(TOP)/ext/fts2/fts2_hash.c $(HDR) $(EXTHDR)
-	$(TCCX) -DSQLITE_CORE -c $(TOP)/ext/fts2/fts2_hash.c
-
-fts2_icu.o:	$(TOP)/ext/fts2/fts2_icu.c $(HDR) $(EXTHDR)
-	$(TCCX) -DSQLITE_CORE -c $(TOP)/ext/fts2/fts2_icu.c
-
-fts2_porter.o:	$(TOP)/ext/fts2/fts2_porter.c $(HDR) $(EXTHDR)
-	$(TCCX) -DSQLITE_CORE -c $(TOP)/ext/fts2/fts2_porter.c
-
-fts2_tokenizer.o:	$(TOP)/ext/fts2/fts2_tokenizer.c $(HDR) $(EXTHDR)
-	$(TCCX) -DSQLITE_CORE -c $(TOP)/ext/fts2/fts2_tokenizer.c
-
-fts2_tokenizer1.o:	$(TOP)/ext/fts2/fts2_tokenizer1.c $(HDR) $(EXTHDR)
-	$(TCCX) -DSQLITE_CORE -c $(TOP)/ext/fts2/fts2_tokenizer1.c
 
 fts3.o:	$(TOP)/ext/fts3/fts3.c $(HDR) $(EXTHDR)
 	$(TCCX) -DSQLITE_CORE -c $(TOP)/ext/fts3/fts3.c
@@ -945,11 +927,11 @@ fulltestonly:	$(TESTPROGS) fuzztest
 queryplantest:	testfixture$(EXE) sqlite3$(EXE)
 	./testfixture$(EXE) $(TOP)/test/permutations.test queryplanner $(TESTOPTS)
 
-fuzztest:	fuzzcheck$(EXE) $(FUZZDATA) sessionfuzz$(EXE) $(TOP)/test/sessionfuzz-data1.db
+fuzztest:	fuzzcheck$(EXE) $(FUZZDATA) sessionfuzz$(EXE)
 	./fuzzcheck$(EXE) $(FUZZDATA)
 	./sessionfuzz run $(TOP)/test/sessionfuzz-data1.db
 
-valgrindfuzz:	fuzzcheck$(EXE) $(FUZZDATA) sessionfuzz$(EXE) $(TOP)/test/sessionfuzz-data1.db
+valgrindfuzz:	fuzzcheck$(EXE) $(FUZZDATA) sessionfuzz$(EXE)
 	valgrind ./fuzzcheck$(EXE) --cell-size-check --limit-mem 10M $(FUZZDATA)
 	valgrind ./sessionfuzz run $(TOP)/test/sessionfuzz-data1.db
 
@@ -957,6 +939,19 @@ valgrindfuzz:	fuzzcheck$(EXE) $(FUZZDATA) sessionfuzz$(EXE) $(TOP)/test/sessionf
 #
 tcltest:	./testfixture$(EXE)
 	./testfixture$(EXE) $(TOP)/test/veryquick.test $(TESTOPTS)
+
+# Runs all the same tests cases as the "tcltest" target but uses
+# the testrunner.tcl script to run them in multiple cores
+# concurrently.
+testrunner:	testfixture$(EXE)
+	./testfixture$(EXE) $(TOP)/test/testrunner.tcl
+
+# Runs both fuzztest and testrunner, consecutively.
+#
+devtest:	testfixture$(EXE) fuzztest testrunner
+
+mdevtest:
+	tclsh $(TOP)/test/testrunner.tcl mdevtest
 
 # A very quick test using only testfixture and omitting all the slower
 # tests.  Designed to run in under 3 minutes on a workstation.
@@ -967,6 +962,7 @@ quicktest:	./testfixture$(EXE)
 # The default test case.  Runs most of the faster standard TCL tests,
 # and fuzz tests, and sqlite3_analyzer and sqldiff tests.
 test:	fuzztest sourcetest $(TESTPROGS) tcltest
+
 
 # Run a test using valgrind.  This can take a really long time
 # because valgrind is so much slower than a native machine.
@@ -1141,3 +1137,4 @@ clean:
 	rm -f fts5.* fts5parse.*
 	rm -f lsm.h lsm1.c
 	rm -f threadtest5
+	rm -f src-verify

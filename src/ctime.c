@@ -28,7 +28,7 @@
 ** autoconf-based build
 */
 #if defined(_HAVE_SQLITE_CONFIG_H) && !defined(SQLITECONFIG_H)
-#include "config.h"
+#include "sqlite_cfg.h"
 #define SQLITECONFIG_H 1
 #endif
 
@@ -59,9 +59,6 @@ static const char * const sqlite3azCompileOpt[] = {
 #endif
 #ifdef SQLITE_4_BYTE_ALIGNED_MALLOC
   "4_BYTE_ALIGNED_MALLOC",
-#endif
-#ifdef SQLITE_64BIT_STATS
-  "64BIT_STATS",
 #endif
 #ifdef SQLITE_ALLOW_COVERING_INDEX_SCAN
 # if SQLITE_ALLOW_COVERING_INDEX_SCAN != 1
@@ -192,6 +189,9 @@ static const char * const sqlite3azCompileOpt[] = {
 #endif
 #ifdef SQLITE_DISABLE_SKIPAHEAD_DISTINCT
   "DISABLE_SKIPAHEAD_DISTINCT",
+#endif
+#ifdef SQLITE_DQS
+  "DQS=" CTIMEOPT_VAL(SQLITE_DQS),
 #endif
 #ifdef SQLITE_ENABLE_8_3_NAMES
   "ENABLE_8_3_NAMES=" CTIMEOPT_VAL(SQLITE_ENABLE_8_3_NAMES),
@@ -355,6 +355,9 @@ static const char * const sqlite3azCompileOpt[] = {
 #ifdef SQLITE_EXPLAIN_ESTIMATED_ROWS
   "EXPLAIN_ESTIMATED_ROWS",
 #endif
+#ifdef SQLITE_EXTRA_AUTOEXT
+  "EXTRA_AUTOEXT=" CTIMEOPT_VAL(SQLITE_EXTRA_AUTOEXT),
+#endif
 #ifdef SQLITE_EXTRA_IFNULLROW
   "EXTRA_IFNULLROW",
 #endif
@@ -400,6 +403,9 @@ static const char * const sqlite3azCompileOpt[] = {
 #endif
 #ifdef SQLITE_INTEGRITY_CHECK_ERROR_MAX
   "INTEGRITY_CHECK_ERROR_MAX=" CTIMEOPT_VAL(SQLITE_INTEGRITY_CHECK_ERROR_MAX),
+#endif
+#ifdef SQLITE_LEGACY_JSON_VALID
+  "LEGACY_JSON_VALID",
 #endif
 #ifdef SQLITE_LIKE_DOESNT_MATCH_BLOBS
   "LIKE_DOESNT_MATCH_BLOBS",
@@ -638,6 +644,9 @@ static const char * const sqlite3azCompileOpt[] = {
 #ifdef SQLITE_OMIT_SCHEMA_VERSION_PRAGMAS
   "OMIT_SCHEMA_VERSION_PRAGMAS",
 #endif
+#ifdef SQLITE_OMIT_SEH
+  "OMIT_SEH",
+#endif
 #ifdef SQLITE_OMIT_SHARED_CACHE
   "OMIT_SHARED_CACHE",
 #endif
@@ -687,9 +696,6 @@ static const char * const sqlite3azCompileOpt[] = {
 #endif
 #ifdef SQLITE_OMIT_XFER_OPT
   "OMIT_XFER_OPT",
-#endif
-#ifdef SQLITE_PCACHE_SEPARATE_HEADER
-  "PCACHE_SEPARATE_HEADER",
 #endif
 #ifdef SQLITE_PERFORMANCE_TRACE
   "PERFORMANCE_TRACE",

@@ -391,6 +391,16 @@ do_setup_rec_test $tn.18.1 {
   SEARCH SomeObject USING COVERING INDEX SomeObject_idx_00000078 (x=?)
 }
 
+
+do_setup_rec_test $tn.19.0 {
+  CREATE TABLE t1("index");
+} {
+  SELECT * FROM t1 ORDER BY "index";
+} {
+  CREATE INDEX t1_idx_01a7214e ON t1('index');
+  SCAN t1 USING COVERING INDEX t1_idx_01a7214e
+}
+
 }
 
 proc do_candidates_test {tn sql res} {
@@ -452,6 +462,25 @@ do_execsql_test 5.3 {
   t2 t2_idx_00000063 {100 20} 
   t2 t2_idx_00000064 {100 5} 
   t2 t2_idx_0001295b {100 20 5}
+}
+
+if 0 {
+do_test expert1-6.0 {
+  catchcmd :memory: {
+.expert
+select base64('');
+.expert
+select name from pragma_collation_list order by name collate uint;
+}
+} {0 {(no new indexes)
+
+SCAN CONSTANT ROW
+
+(no new indexes)
+
+SCAN pragma_collation_list VIRTUAL TABLE INDEX 0:
+USE TEMP B-TREE FOR ORDER BY
+}}
 }
 
 finish_test
